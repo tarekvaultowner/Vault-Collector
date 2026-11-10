@@ -1,4 +1,11 @@
-# CANDIDATE 3 for review only. Never run. Every "uses:" is pinned to a full 40-character commit
+# CANDIDATE 5 for review only (offline; NOT run). Candidate 3 of this file ran (merged 716b11ca); candidates 4-5 have not.
+# Candidate 5: two optional inputs, phase (pre|post, default pre) and steps (JSON [{"step":1,"target":"Buy"}]), passed
+# through env like every other input; the local controls now also include buy.html -> done.html (static Buy link).
+# Pins, permissions, jobs and the attest job are unchanged.
+# Candidate 4 workflow changes are wording only (this header, one step name, the url input's
+# description). The local server already serves the whole control/ folder, which now also holds
+# working.html. Behavior and pins are unchanged from candidate 3.
+# Every "uses:" is pinned to a full 40-character commit
 # SHA with its tag as a comment. The five SHAs and tags were looked up and checked by Codex
 # (official GitHub API tag refs + action.yml at each commit, Nov 10 2026 ~2:30 AM PT; see
 # ACTION-PINS.txt). Duet did not look them up: this session can't read unattached GitHub repos.
@@ -7,13 +14,15 @@ on:
   workflow_dispatch:
     inputs:
       job_id:       {description: "Vault job id", required: true, type: string}
-      url:          {description: "https page, or http://127.0.0.1:8765/broken.html", required: true, type: string}
+      url:          {description: "https page, or http://127.0.0.1:8765/broken.html or /working.html", required: true, type: string}
       nonce:        {description: "grader nonce, 32 hex", required: true, type: string}
       targets:      {description: "JSON list of 'Name=css selector'", required: true, type: string}
       content_system:       {required: true, type: string}
       content_id:           {required: true, type: string}
       content_version:      {required: true, type: string}
       content_version_time: {required: true, type: string}
+      phase:        {description: "pre or post (candidate 5)", required: false, type: string, default: "pre"}
+      steps:        {description: "JSON list of {step, target} to tap in order, or empty (candidate 5)", required: false, type: string, default: ""}
 permissions: {}
 concurrency:
   group: collect-${{ github.run_id }}
@@ -36,7 +45,7 @@ jobs:
           python -m pip check
           python -c "import greenlet, pyee, typing_extensions, playwright.sync_api"
           python -m playwright install --with-deps webkit
-      - name: Serve the broken control on localhost only
+      - name: Serve the local controls (broken.html, working.html, buy.html, done.html) on localhost only
         run: |
           (cd control && python -m http.server 8765 --bind 127.0.0.1 >/dev/null 2>&1 &)
           sleep 1
@@ -50,6 +59,8 @@ jobs:
           IN_CI: ${{ inputs.content_id }}
           IN_CV: ${{ inputs.content_version }}
           IN_CVT: ${{ inputs.content_version_time }}
+          IN_PHASE: ${{ inputs.phase }}
+          IN_STEPS: ${{ inputs.steps }}
         run: python collector/capture.py --out out
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
