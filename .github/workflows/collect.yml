@@ -1,0 +1,87 @@
+# CANDIDATE 3 for review only. Never run. Every "uses:" is pinned to a full 40-character commit
+# SHA with its tag as a comment. The five SHAs and tags were looked up and checked by Codex
+# (official GitHub API tag refs + action.yml at each commit, Nov 10 2026 ~2:30 AM PT; see
+# ACTION-PINS.txt). Duet did not look them up: this session can't read unattached GitHub repos.
+name: collect
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:       {description: "Vault job id", required: true, type: string}
+      url:          {description: "https page, or http://127.0.0.1:8765/broken.html", required: true, type: string}
+      nonce:        {description: "grader nonce, 32 hex", required: true, type: string}
+      targets:      {description: "JSON list of 'Name=css selector'", required: true, type: string}
+      content_system:       {required: true, type: string}
+      content_id:           {required: true, type: string}
+      content_version:      {required: true, type: string}
+      content_version_time: {required: true, type: string}
+permissions: {}
+concurrency:
+  group: collect-${{ github.run_id }}
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install pinned browser tooling
+        run: |
+          python -m pip install --require-hashes --no-deps -r collector/requirements.txt
+          python -m pip check
+          python -c "import greenlet, pyee, typing_extensions, playwright.sync_api"
+          python -m playwright install --with-deps webkit
+      - name: Serve the broken control on localhost only
+        run: |
+          (cd control && python -m http.server 8765 --bind 127.0.0.1 >/dev/null 2>&1 &)
+          sleep 1
+      - name: Capture (inputs pass through env, never pasted into the script)
+        env:
+          IN_JOB_ID: ${{ inputs.job_id }}
+          IN_URL: ${{ inputs.url }}
+          IN_NONCE: ${{ inputs.nonce }}
+          IN_TARGETS: ${{ inputs.targets }}
+          IN_CS: ${{ inputs.content_system }}
+          IN_CI: ${{ inputs.content_id }}
+          IN_CV: ${{ inputs.content_version }}
+          IN_CVT: ${{ inputs.content_version_time }}
+        run: python collector/capture.py --out out
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: evidence
+          path: out/
+          retention-days: 1
+          if-no-files-found: error
+  attest:
+    needs: capture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    steps:
+      # No checkout and no project code here: only pinned download and attest actions.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: evidence
+          path: out
+      - id: att
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: "out/**"
+      - name: Keep the bundle with the run
+        env:
+          BUNDLE: ${{ steps.att.outputs.bundle-path }}
+        run: mkdir -p bundle && cp "$BUNDLE" bundle/provenance.sigstore.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: attestation
+          path: bundle/
+          retention-days: 1
+          if-no-files-found: error
