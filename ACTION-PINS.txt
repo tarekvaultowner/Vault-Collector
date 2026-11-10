@@ -1,0 +1,6 @@
+# placeholder (candidate 2)                 action                          tag      full commit SHA (checked by Codex, Nov 10 2026 ~2:30 AM PT)
+PIN_ME_CHECKOUT_FULL_SHA                    actions/checkout                v7.0.1   3d3c42e5aac5ba805825da76410c181273ba90b1
+PIN_ME_SETUP_PYTHON_FULL_SHA                actions/setup-python            v7.1.0   6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+PIN_ME_UPLOAD_ARTIFACT_FULL_SHA             actions/upload-artifact         v7.0.2   cf430e030ddbb5b0abf93d22962f4752f3646cd9
+PIN_ME_DOWNLOAD_ARTIFACT_FULL_SHA           actions/download-artifact       v8.0.2   9000827ccba6bdab643e8b6fd33ac0654aef8333
+PIN_ME_ATTEST_BUILD_PROVENANCE_FULL_SHA     actions/attest-build-provenance v4.2.2   4d101475d8b20a2381f78447822ac1eab6504dd8

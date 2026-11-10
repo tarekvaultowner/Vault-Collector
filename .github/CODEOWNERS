@@ -1,0 +1,3 @@
+# Owner approval must also be required by the main branch protection rule.
+* @tarekvaultowner
+/.github/ @tarekvaultowner
